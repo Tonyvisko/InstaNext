@@ -3,7 +3,7 @@ const multer = require("multer")
 const PostRouter = express.Router()
 const { mongoose, connectDB } = require("../../../config/MongooseConf.js")
 const cloudinary = require("../../../config/CloudinaryConf.js")
-const {initSocket} =  require("../../../socket/index.js")
+const {initSocket, userSockets} =  require("../../../socket/index.js")
 
 
 
@@ -111,11 +111,11 @@ PostRouter.get("/get-posts", verifyToken, async (req, res) => {
         const user = await User.findById(post.userID); // post.userID là string
         const fullname = user ? user.fullname : "Ẩn danh";
         const avatar = user ? user.avatar : "";
-
+        
         // Format bài viết
         return {
           id: post._id.toString(),
-          userId: post.userID || null,
+          userID: post.userID || null,
           fullname,
           avatar,
           image: post.image || "",
@@ -391,7 +391,7 @@ PostRouter.post("/:postId/like", verifyToken, async (req, res) => {
         });
         
         // Gửi thông báo real-time qua Socket.IO
-        const receiverSocketId = userSockets.get(post.userId);
+        const receiverSocketId = userSockets.get(post.userID);
         if (receiverSocketId) {
           const sender = await User.findById(userId);
           io.to(receiverSocketId).emit('new-notification', {

@@ -15,11 +15,11 @@ const collectUserData = (eventType: string, data: any) => {
     const userData = {
         timestamp: new Date().toISOString(),
         eventType,
-        data,
-        sessionId: getSessionId(),
-        userAgent: navigator.userAgent,
-        screenResolution: `${window.screen.width}x${window.screen.height}`,
-        viewportSize: `${window.innerWidth}x${window.innerHeight}`,
+        postId: data.postId,
+        dwell_time: data.dwell_time ?? 0,
+        target_userID: data.target_userID ?? null,
+        // data,
+        sessionId: getSessionId()     
     }
 
     // Lưu vào memory 
@@ -93,7 +93,7 @@ export default function PostPage() {
 
             collectUserData('page_leave', {
                 page: 'home',
-                timeSpent: Math.round(timeSpent / 1000) // seconds
+                dwell_time: Math.round(timeSpent / 1000) // seconds
             })
         }
     }, [posts.length])
@@ -108,22 +108,19 @@ export default function PostPage() {
                     if (entry.isIntersecting) {
                         // Post BẮT ĐẦU hiển thị
                         if (!postViewTimes.current.has(postId!)) {
-                            postViewTimes.current.set(postId!, Date.now())
-
-                            // collectUserData('post_view_start', {
-                            //     postId,
-                            //     visibilityRatio: entry.intersectionRatio
-                            // })
+                            postViewTimes.current.set(postId!, Date.now())                            
                         }
                     } else {
                         // Post BIẾN MẤT khỏi viewport
                         if (postViewTimes.current.has(postId!)) {
                             const startTime = postViewTimes.current.get(postId!)!
                             const viewDuration = Date.now() - startTime
-
+                            const post = posts.find(p => p.id === postId)
+                            console.log("target user ID tai post view end", post?.userID)
                             collectUserData('post_view_end', {
                                 postId,
-                                viewDuration: Math.round(viewDuration / 1000), // giây
+                                target_userID: post?.userID,
+                                dwell_time: Math.round(viewDuration / 1000), // giây
                                 visibilityRatio: entry.intersectionRatio
                             })
 
@@ -143,6 +140,8 @@ export default function PostPage() {
         return () => {
             postViewTimes.current.forEach((startTime, postId) => {
                 const viewDuration = Date.now() - startTime
+                const post = posts.find(p => p.id === postId)
+                console.log("target user ID tai post view end", post?.userID)
                 collectUserData('post_view_end', {
                     postId,
                     viewDuration: Math.round(viewDuration / 1000),
@@ -160,7 +159,7 @@ export default function PostPage() {
        
         collectUserData('open_comments', {
             postId: post.id,
-            postAuthor: post.fullname,
+            target_userID: post.userID,
             commentCount: post.commentCount
         })
     }
@@ -168,12 +167,12 @@ export default function PostPage() {
     const handleCloseComments = () => {
         const timeSpent = Date.now() - viewStartTime
 
-        if (selectedPost) {
-            collectUserData('close_comments', {
-                postId: selectedPost.id,
-                timeSpent: Math.round(timeSpent / 1000)
-            })
-        }
+        // if (selectedPost) {
+        //     collectUserData('close_comments', {
+        //         postId: selectedPost.id,
+        //         timeSpent: Math.round(timeSpent / 1000)
+        //     })
+        // }
 
         setIsCommentsOpen(false)
         setSelectedPost(null)
@@ -184,7 +183,7 @@ export default function PostPage() {
 
         collectUserData('like_post', {
             postId: post.id,
-            postAuthor: post.fullname,
+            target_userID: post.userID,
             action: post.isLiked ? 'unlike' : 'like',
             currentLikes: post.likes
         })
@@ -193,13 +192,14 @@ export default function PostPage() {
     const handleShareClick = (post: Post) => {
         collectUserData('share_click', {
             postId: post.id,
-            postAuthor: post.fullname
+            target_userID: post.userID
         })
     }
 
     const handleViewAllComments = (post: Post) => {
         collectUserData('view_all_comments_click', {
             postId: post.id,
+            target_userID: post.userID,
             commentCount: post.commentCount
         })
         handleOpenComments(post)
@@ -207,7 +207,7 @@ export default function PostPage() {
 
     const handleAvatarClick = (post: Post) => {
         collectUserData('profile_click', {
-            userID: post.id,
+            target_userID: post.id,
             username: post.fullname,
             clickLocation: 'avatar'
         })

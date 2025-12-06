@@ -167,7 +167,7 @@ async function chatSocket(io, socket) {
               io.to(String(fid)).emit("friendOffline", { userId: socket.userID , online: false })
             );
             userDisconnectTimers.delete(socket.userID );
-          }, OFFLINE_DELAY_MS);
+          }, OFFLINE_DELAY_MS); 
           userDisconnectTimers.set(socket.userID , t);
         }
       }

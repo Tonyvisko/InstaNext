@@ -34,11 +34,12 @@ export default function LeftSidebar({ currentPage, onNavigate }: LeftSidebarProp
         }
       }
       localStorage.removeItem("token");
+      localStorage.removeItem("userID");
       try { delete axios.defaults.headers.common["Authorization"]; } catch {}
     } catch (e) {
       console.warn("Error clearing token on sign out:", e);
     }
-    navigate("/login");
+    navigate("/");
   }
   return (
     <div className="w-16 lg:w-56 xl:w-64 2xl:w-72 border-r border-gray-200 flex flex-col fixed h-full z-10 bg-white transition-all duration-300">

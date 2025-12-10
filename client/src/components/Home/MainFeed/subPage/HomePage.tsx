@@ -23,6 +23,9 @@ const collectUserData = (eventType: string, data: any) => {
     }
 
     // Lưu vào memory 
+    if(eventType === "view" && data.dwell_time < 1.5 ){
+        return
+    }
     saveAnalytics(userData)
 
     // console.log('User Data Collected:', userData)
@@ -78,27 +81,8 @@ export default function PostPage() {
     // THÊM: Ref để lưu thời gian bắt đầu xem mỗi post
     const postViewTimes = useRef<Map<string, number>>(new Map())
 
-    // Track page view và thời gian ở lại trang
-    useEffect(() => {
-        const startTime = Date.now()
+   
 
-        // collectUserData('page_view', {
-        //     page: 'home',
-        //     postsCount: posts.length
-        // })
-
-        // Track time on page when leaving
-        return () => {
-            const timeSpent = Date.now() - startTime
-
-            collectUserData('page_leave', {
-                page: 'home',
-                dwell_time: Math.round(timeSpent / 1000) // seconds
-            })
-        }
-    }, [posts.length])
-
-    // ✅ THAY ĐỔI: Track post visibility + THỜI GIAN XEM
     useEffect(() => {
         const observer = new IntersectionObserver(
             (entries) => {
@@ -116,11 +100,11 @@ export default function PostPage() {
                             const startTime = postViewTimes.current.get(postId!)!
                             const viewDuration = Date.now() - startTime
                             const post = posts.find(p => p.id === postId)
-                            console.log("target user ID tai post view end", post?.userID)
-                            collectUserData('post_view_end', {
+                            
+                            collectUserData('view', {
                                 postId,
                                 target_userID: post?.userID,
-                                dwell_time: Math.round(viewDuration / 1000), // giây
+                                dwell_time: Math.floor(viewDuration / 1000), // giây
                                 visibilityRatio: entry.intersectionRatio
                             })
 
@@ -141,10 +125,11 @@ export default function PostPage() {
             postViewTimes.current.forEach((startTime, postId) => {
                 const viewDuration = Date.now() - startTime
                 const post = posts.find(p => p.id === postId)
-                console.log("target user ID tai post view end", post?.userID)
-                collectUserData('post_view_end', {
+                
+                collectUserData('view', {
                     postId,
-                    viewDuration: Math.round(viewDuration / 1000),
+                    target_userID: post?.userID,
+                    viewDuration: Math.floor(viewDuration / 1000),
                     reason: 'page_leave' // Đánh dấu là do rời trang
                 })
             })
@@ -239,7 +224,7 @@ export default function PostPage() {
                                         >
                                             {post.fullname}
                                         </p>
-                                        <p className="text-xl text-gray-500">{post.time}</p>
+                                        <p className="text-xl text-gray-500">{post.created_at}</p>
                                     </div>
                                     <Button variant="ghost" size="sm">
                                         <Settings size={16} />

@@ -3,8 +3,9 @@ const { notificationSocket } = require("./notificationSocket"); // nếu bạn d
 const {chatSocket} = require("./chatSocket")
 const onlineUsers = new Map();
 
+let io 
 function initSocket(httpServer) {
-  const io = new Server(httpServer, {
+  io = new Server(httpServer, {
     cors: {
       origin: "http://localhost:5173",
       methods: ["GET", "POST", "PUT", "DELETE"],
@@ -24,6 +25,7 @@ function initSocket(httpServer) {
 
   io.on("connection", (socket) => {
     console.log(`✅ User connected: ${socket.userID}`);
+    console.log(`✅ socket connected: ${socket.id}`);
     onlineUsers.set(socket.userID, socket.id);
 
     // gọi handler phụ
@@ -38,5 +40,10 @@ function initSocket(httpServer) {
 
   return io;
 }
-
-module.exports = { initSocket, onlineUsers };
+function getIO() {
+  if (!io) {
+    throw new Error("Socket.io chưa được khởi tạo!");
+  }
+  return io;
+}
+module.exports = { initSocket, getIO, onlineUsers };

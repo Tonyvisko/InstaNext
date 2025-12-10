@@ -45,7 +45,7 @@ export default function CommentsOverlay({
     fullname: "",
     avatar: "",
     text: "",
-    time: "",
+    created_at: "",
     likes: 0,
     isLiked: false,
     parentId: undefined,
@@ -169,6 +169,7 @@ export default function CommentsOverlay({
   }
   
   const handleSubmitReplyComment = async (e: React.FormEvent, postId: string, parentCommentId: string, reply: Comment) => {
+    e.preventDefault();
     addReply(postId, parentCommentId, reply)
     console.log("Da them binh luan ")
   }
@@ -198,7 +199,7 @@ export default function CommentsOverlay({
                 <p className="text-sm">
                   <span className="font-semibold">{post.fullname}</span> {post.caption}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">{post.time}</p>
+                <p className="text-xs text-gray-500 mt-1">{post.created_at}</p>
               </div>
               <Button variant="ghost" size="sm" onClick={onClose}>
                 <X size={20} />
@@ -266,7 +267,7 @@ export default function CommentsOverlay({
                         fullname: "ddd",
                         avatar: "",
                         text: e.target.value,
-                        time: "10/5",
+                        created_at: "10/5",
                         likes: 0,
                         isLiked: false,
                         parentId: replyState.parrentComment!,
@@ -297,6 +298,7 @@ export default function CommentsOverlay({
             <form onSubmit={handleSubmitComment} className="p-4 border-t">
               <div className="flex items-center gap-4 mb-3">
                 <Button
+                type="button"
                   size="sm"
                   className="p-0"
                   onClick={() => {
@@ -325,10 +327,10 @@ export default function CommentsOverlay({
                     setNewComment({
                       id: String(post.commentCount + 1),
                       userID: "Tien Dat",
-                      fullname: "ddd",
+                      fullname: post.fullname,
                       avatar: "",
                       text: e.target.value,
-                      time: "10/5",
+                      created_at: "10/5",
                       likes: 0,
                       isLiked: false,
                       replies: [],

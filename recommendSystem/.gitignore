@@ -14,7 +14,7 @@ dist-ssr
 src/test/*
 recommendSystem/recommendSystem.py
 routes/tesst.js
-
+toxic
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

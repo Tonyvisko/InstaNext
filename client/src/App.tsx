@@ -16,7 +16,8 @@ import ExplorePage from './components/Home/MainFeed/subPage/ExplorePage'
 import NotificationsPage from './components/Home/MainFeed/subPage/NotificationsPage'
 import CreatePage from './components/Home/MainFeed/subPage/CreatePage'
 
-
+import AdminDashboard from './pages/AdminPage'
+import { NotificationProvider } from './context/NotificationContext'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -29,17 +30,22 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
 
-  
+
   return (
-    <Routes>      
+    <Routes>
       <Route path="/homePage" element={<HomePage />} >
         <Route path="home" element={<PostPage />} />
         <Route path="search" element={<SearchPage />} />
         <Route path="explore" element={<ExplorePage />} />
-        <Route path="notifications" element={<NotificationsPage  />} />
+        <Route path="notifications" element={
+          <NotificationProvider>
+            <NotificationsPage />
+          </NotificationProvider>} />
         <Route path="create" element={<CreatePage />} />
         <Route path="profile/:userID" element={<ProfilePage />} />
       </Route>
+
+      <Route path="admin" element={<AdminDashboard />} />
 
       <Route path="/messages" element={<PrivateRoute><MessagePage /></PrivateRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />

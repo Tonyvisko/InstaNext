@@ -17,7 +17,7 @@ ExploreRouter.get("/get-explore",verifyToken, async (req, res) =>{
   }
   const formatPostList = await Promise.all(
       explorePostList.map(async (post) => {
-        const isLiked = await Like.exists({ userID: req.userId, postID: post._id });
+        const isLiked = await Like.exists({ userID: req.userID, postID: post._id });
         const user = await User.findById(post.userID);
         return {
           id: post._id,
@@ -28,7 +28,7 @@ ExploreRouter.get("/get-explore",verifyToken, async (req, res) =>{
           caption: post.caption,
           likeCount: post.likeCount,
           commentCount: post.commentCount,
-          time: post.time,
+          created_at: post.created_at,
           privacy: post.privacy,
           isLiked: !!isLiked,
         };

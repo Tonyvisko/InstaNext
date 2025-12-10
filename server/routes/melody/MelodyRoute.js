@@ -12,8 +12,9 @@ const loginRouter = require("./MelodySub/login.js")
 const trackingRouter = require("./MelodySub/tracking.js")
 
 const messageRouter = require("./MelodySub/messenger.js")
+const notifyRouter = require("./MelodySub/notification.js")
 
-
+MelodyPage.use("/notify", notifyRouter)
 MelodyPage.use("/explore", exploreRouter )
 MelodyPage.use("/post", PostRouter )
 MelodyPage.use("/profile", profileRouter )

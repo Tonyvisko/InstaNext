@@ -14,7 +14,7 @@ export function useSocket(userID: string) {
 
     socket.on("connect", () => {
       // console.log(" Connected to socket server:", socket.id);
-      console.log(" Connected:", socket.id, "userID:", userID);
+      console.log("Client Connected:", socket.id, "userID:", userID);
     });
 
     socket.on("disconnect", () => {

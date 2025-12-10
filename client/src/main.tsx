@@ -4,15 +4,17 @@ import './index.css'
 import App from './App.tsx'
 import { BrowserRouter } from 'react-router-dom'
 import { SocketProvider } from './context/SocketContext.tsx'
+import { NotificationProvider } from './context/NotificationContext.tsx'
 
 
 const userID = localStorage.getItem("userID") || ""
-console.log("userID", userID)
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <SocketProvider userID={userID}>
-        <App />
+        
+          <App />
+        
       </SocketProvider>
     </BrowserRouter>
   </StrictMode>,

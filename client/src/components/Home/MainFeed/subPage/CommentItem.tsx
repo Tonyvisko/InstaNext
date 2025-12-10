@@ -18,7 +18,7 @@ export default function CommentItem({
   setReplyState: React.Dispatch<React.SetStateAction<ReplyState>>
 }) {
   const [expanded, setExpanded] = useState(false)
-  const { updateLikeComment, handleTokenExpired } = usePostContext()
+  const { updateLikeComment } = usePostContext()
 
   return (
     <div className="flex items-start text-start gap-3">
@@ -49,7 +49,7 @@ export default function CommentItem({
 
         {/* Info */}
         <div className="flex items-center gap-4 mt-1">
-          <p className="text-xs text-gray-500">{comment.time}</p>
+          <p className="text-xs text-gray-500">{comment.created_at}</p>
           <p className="text-xs text-gray-500 hover:text-gray-700">{comment.likes} lượt thích</p>
           <p
             className="text-xs cursor-pointer text-gray-500 hover:text-gray-700"
@@ -81,7 +81,7 @@ export default function CommentItem({
                     <span className="font-semibold">{reply.fullname}</span> {reply.text}
                   </p>
                   <div className="flex items-center gap-4 mt-1">
-                    <p className="text-xs text-muted-foreground">{reply.time}</p>
+                    <p className="text-xs text-muted-foreground">{reply.created_at}</p>
                     <p
                       onClick={() =>
                         setReplyState({

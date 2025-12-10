@@ -169,4 +169,21 @@ MessageRouter.get("/messages/:conversationId", async (req, res) => {
 	}
 });
 
+// --- Lấy danh sách users (for testing calls) ---
+MessageRouter.get("/users", async (req, res) => {
+	try {
+		const users = await User.find({})
+			.select("_id fullname email avatar online")
+			.limit(20); // Limit to prevent too many results
+		return res.status(200).json({
+			success: true,
+			count: users.length,
+			data: users
+		});
+	} catch (err) {
+		console.error("❌ Lỗi lấy danh sách users:", err);
+		res.status(500).json({ error: "Lỗi server", details: err.message });
+	}
+});
+
 module.exports = MessageRouter;

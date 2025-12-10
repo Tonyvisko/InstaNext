@@ -9,6 +9,9 @@ import SignUp from './pages/login/signup'
 import './App.css'
 import HomePage from './pages/HomePage'
 import MessagePage from '../src/pages/MessagePage'
+import CallPage from './pages/CallPage'
+import CallOverlay from './components/Call/CallOverlay'
+import CallWindow from './components/Call/CallWindow'
 import ProfilePage from './components/Home/MainFeed/subPage/ProfilePage'
 import PostPage from './components/Home/MainFeed/subPage/HomePage'
 import SearchPage from './components/Home/MainFeed/subPage/SearchPage'
@@ -32,7 +35,11 @@ function App() {
 
 
   return (
-    <Routes>
+
+    <>
+      <CallOverlay />
+      <CallWindow />
+      <Routes>
       <Route path="/homePage" element={<HomePage />} >
         <Route path="home" element={<PostPage />} />
         <Route path="search" element={<SearchPage />} />
@@ -48,12 +55,14 @@ function App() {
       <Route path="admin" element={<AdminDashboard />} />
 
       <Route path="/messages" element={<PrivateRoute><MessagePage /></PrivateRoute>} />
+      <Route path="/call/:callId" element={<PrivateRoute><CallPage /></PrivateRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
 
       <Route path="/signup" element={<SignUp />} />
       <Route path="/" element={<LoginForm />} />
       <Route path="/messages" element={<MessagePage />} />
-    </Routes>
+      </Routes>
+    </>
 
   )
 

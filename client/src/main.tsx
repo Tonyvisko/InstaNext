@@ -11,7 +11,8 @@ const userID = localStorage.getItem("userID") || ""
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
-      <SocketProvider userID={userID}>
+      {/* <SocketProvider userID={userID}> */}
+      <SocketProvider >
         
           <App />
         

@@ -305,7 +305,7 @@ class RedisDBManager :
         if posts:
             posts_serialized = [json.dumps(post) for post in posts]
             await self.redis.rpush(key, *posts_serialized)
-            await self.redis.expire(key, 5*60)
+            await self.redis.expire(key, 1*60)
 
     async def add_user_candidates(self, userID:str, candidates: List[ObjectId]):
         if not candidates:
@@ -317,7 +317,7 @@ class RedisDBManager :
         candidates_str = [str(c) for c in candidates]
         key = f"user_candidates:{userID}"
         await self.redis.rpush(key,*candidates_str)
-        await self.redis.expire(key, 15*60)
+        await self.redis.expire(key, 2*60)
 
 # ============= INTELLIGENT ENGINE =============
 

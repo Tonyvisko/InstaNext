@@ -49,7 +49,7 @@ class Config:
     # MongoDB Configuration
     # MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
    
-    # MONGO_URI = os.getenv("MONGO_URI","mongodb+srv://tiendat24:tiendat24@hethongthongminh.cyy5mor.mongodb.net/HeThongThongMinh?retryWrites=true&w=majority&appName=HeThongThongMinh")
+    # MONGO_URI = os.getenv("MONGO_URI")
 
     # # MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "social_media_db")
     # MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "HeThongThongMinh")

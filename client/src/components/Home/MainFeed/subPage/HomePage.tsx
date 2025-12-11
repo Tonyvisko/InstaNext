@@ -215,7 +215,7 @@ export default function PostPage() {
                                         className="h-15 w-15 cursor-pointer"
                                         onClick={() => handleAvatarClick(post)}
                                     >
-                                        <AvatarImage src={post.avatar || "/placeholder.svg"} />
+                                        <AvatarImage src={post.avatar || "https://res.cloudinary.com/dsfgzdr5z/image/upload/v1765428569/jmhwx3kbhxxa10jmunzr.png"} />
                                     </Avatar>
                                     <div className="flex-1 text-start text-2xl">
                                         <p

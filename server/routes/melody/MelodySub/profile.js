@@ -45,7 +45,7 @@ ProfileRouter.get("/get-profile/:userID", verifyToken, async (req, res) => {
     const apiRes = SuccesAPI("Lấy thông tin người dùng thành công", profileData);
     res.status(200).json(apiRes);
   } catch (error) {
-    const errRes = ErrorAPI(`Lỗi khi lấy trang cá nhan, loi: ${error.message}`,ErrorCode.GET_PROFILE_ERROR)
+    const errRes = ErrorAPI(`Lỗi khi lấy trang cá nhan, loi: ${error.message}`, ErrorCode.GET_PROFILE_ERROR)
     res.status(errRes.status).json(errRes)
   }
 })
@@ -116,6 +116,39 @@ ProfileRouter.post("/follow/:userID", verifyToken, async (req, res) => {
       });
     }
 
+
+    session = driver.session();
+    if (!userID) return res.status(401).json({ message: "Unauthorized" });
+
+    try {
+      if (!mongoose.Types.ObjectId.isValid(friendID)) {
+        return res.status(400).json({ message: "ID người dùng không hợp lệ" });
+      }
+
+      const checkFriendship = await session.run(
+        `
+      MATCH (u1:User {id: $userID})-[r:FRIEND_WITH]-(u2:User {id: $friendID})
+      RETURN COUNT(r) AS count
+      `,
+        { userID, friendID }
+      );
+      const countRecord = checkFriendship.records[0]?.get("count");
+      const isFriend = countRecord ? countRecord.toNumber() > 0 : false;
+
+      // tìm hoặc tạo conversation (tạo ObjectId bằng new)
+      const p1 = new mongoose.Types.ObjectId(String(userID));
+      const p2 = new mongoose.Types.ObjectId(String(friendID));
+      let conversation = await Conversation.findOne({ participants: { $all: [p1, p2] } });
+      if (!conversation) {
+        conversation = new Conversation({ participants: [p1, p2] });
+        await conversation.save();
+      }
+    } catch (err) {
+      console.error("❌ Lỗi khi tạo bạn bè + hội thoại:", err);
+      res.status(500).json({ error: "Lỗi server", details: err.message });
+    } finally {
+      try { await session.close(); } catch { }
+    }
     const apiRes = SuccesAPI("da follow", null)
     res.status(200).json(apiRes)
   } catch (error) {
@@ -240,7 +273,7 @@ ProfileRouter.get("/suggest-friend", verifyToken, async (req, res) => {
     }));
 
     recommendations = [...recommendations, ...popularRecs];
-    const apiRes = SuccesAPI("Lấy danh sách đề xuất bạn bè thành công",recommendations.slice(0, LIMIT_RECOMMENDATION) )
+    const apiRes = SuccesAPI("Lấy danh sách đề xuất bạn bè thành công", recommendations.slice(0, LIMIT_RECOMMENDATION))
     await session.close();
     return res.json(apiRes);
 

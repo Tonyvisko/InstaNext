@@ -46,38 +46,10 @@ load_dotenv()
 
 
 class Config:
-    # MongoDB Configuration
-    # MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
-   
-    # MONGO_URI = os.getenv("MONGO_URI")
-
-    # # MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "social_media_db")
-    # MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "HeThongThongMinh")
-    # #Neo4J
-    # NEO4J_URI=os.getenv("NEO4J_URI","neo4j+s://aa4b4837.databases.neo4j.io")
-    # NEO4J_USERNAME=os.getenv("NEO4J_USERNAME","neo4j")
-    # NEO4J_PASSWORD=os.getenv("NEO4J_PASSWORD","9BN9EAQ-UF3hWPIf9bZYFtCUmrVSjYNK8UXjr3cdrpU")
-    # NEO4J_DATABASE=os.getenv("NEO4J_DATABASE","neo4j")
-    # AURA_INSTANCEID=os.getenv("AURA_INSTANCEID","aa4b4837")
-    # AURA_INSTANCENAME=os.getenv("AURA_INSTANCENAME","Instance02")
-    
-    
-    
-    
-    
-    
     
     MONGO_URI = os.getenv("MONGO_URI")
 
-    # MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "social_media_db")
     MONGO_DB_NAME = os.getenv("MONGO_DB_NAME")
-    #Neo4J
-    # NEO4J_URI=os.getenv("NEO4J_URI")
-    # NEO4J_USERNAME=os.getenv("NEO4J_USERNAME")
-    # NEO4J_PASSWORD=os.getenv("NEO4J_PASSWORD")
-    # NEO4J_DATABASE=os.getenv("NEO4J_DATABASE")
-    # AURA_INSTANCEID=os.getenv("AURA_INSTANCEID")
-    # AURA_INSTANCENAME=os.getenv("AURA_INSTANCENAME")
     
     NEO4J_URI="bolt://localhost:7687"
     NEO4J_USERNAME="neo4j"
@@ -100,7 +72,7 @@ class Config:
     # Training Configuration
     TRAINING_LOOKBACK_DAYS = 60
     MIN_TRAINING_SAMPLES = 1
-    
+    CANDIDATES_LOOKBACK_DAYS=15
     # Interaction Types
     SOCIAL_INTERACTIONS = ['like', 'comment', 'share','view', 'click', 'skip']
     BEHAVIORAL_INTERACTIONS = ['view', 'click', 'skip']
@@ -724,9 +696,7 @@ class RankingAlgorithm:
         
         # Suggested posts
         suggested_query = {
-            "created_at": {"$gte": datetime.now() - timedelta(hours=4800)},
-            "engagement_score": {"$gt": 0},
-            "is_deleted": {"$ne": True}
+            "created_at": {"$gte": datetime.now() - timedelta(hours=Config.CANDIDATES_LOOKBACK_DAYS)},
         }
         pipeline = [
             {"$match": suggested_query},
@@ -862,7 +832,7 @@ class RankingAlgorithm:
             'post_id': str(post['_id']),
             'author_id': str(post['userID']),
             'affinity_score': affinity,
-            'post_type': post['post_type'],
+            'post_type': post.get('post_type', 'status'),
             'time_decay': time_decay,
             'post_age_hours': post_age_hours,
             'total_likes': likes,
@@ -998,7 +968,7 @@ class RankingAlgorithm:
                 fallback_posts = self.db.find_to_dataframe(
                     "posts",
                     {
-                        "is_deleted": {"$ne": True}
+                         "created_at": {"$gte": datetime.now() - timedelta(days=7)},
                     },
                     limit=limit
                 ).sort_values("created_at", ascending=True).head(limit)
@@ -1008,7 +978,7 @@ class RankingAlgorithm:
                     feed.append({
                         "post_id": str(p["_id"]),
                         "author_id": str(p["userID"]),
-                        "post_type": p["post_type"],
+                        "post_type": p.get("post_type", "status"),
                         "content": p["content"],
                         "created_at": str(p["created_at"]),
                         "score": 0,
@@ -1028,6 +998,12 @@ class RankingAlgorithm:
             # print("t5",  round(time.time() - timeCount_t5, 3), "s")
             # 6. APPLY PERSONALIZED WEIGHTS
             # timeCount_t6 = time.time()
+            if 'post_type' in features.columns:
+                for content_type, weight in user_weights.items():
+                    mask = features['post_type'] == content_type
+                    features.loc[mask, 'total_engagement'] *= weight
+            else:
+                 logger.warning(f"Column 'post_type' missing in features for user {user_id}")
             for content_type, weight in user_weights.items():
                 mask = features['post_type'] == content_type
                 features.loc[mask, 'total_engagement'] *= weight
@@ -1152,7 +1128,13 @@ class RankingAlgorithm:
 
         
         except Exception as e:
-            logger.error(f"Error generating intelligent feed: {str(e)}")
+            error_type = type(e).__name__
+            error_message = str(e)
+            
+            logger.error(f"Error generating intelligent feed. Type: {error_type}. Message: {error_message}")
+            
+            # Dòng này sẽ re-raise (tạo lại) ngoại lệ, 
+            # cho phép các hàm gọi khác cũng bắt được nó.
             raise
     
     # ========== FEEDBACK PROCESSING ==========

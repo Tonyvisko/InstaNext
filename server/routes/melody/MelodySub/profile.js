@@ -11,9 +11,10 @@ const { onlineUsers } = require("../../../socket/index.js")
 
 const neo4j = require("neo4j-driver");
 const ProfileRouter = express.Router()
+// #  Đặt ở đầu file profile.js, ngay sau các lệnh require khác
+const mongoose = require('mongoose')
 
-
-
+const Conversation = require("../../../models/Conversation.js")
 
 ProfileRouter.get("/get-profile/:userID", verifyToken, async (req, res) => {
   try {
@@ -87,7 +88,7 @@ ProfileRouter.post("/follow/:userID", verifyToken, async (req, res) => {
       { $inc: { totalFollower: 1 } }
     );
 
-    const session = driver.session();
+    let session = driver.session();
     await session.run(
       `MATCH (u1:User {id: $u1})
       MATCH (u2:User {id: $u2})

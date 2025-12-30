@@ -10,7 +10,7 @@ const ExploreRouter = express.Router();
 
 
 ExploreRouter.get("/get-explore",verifyToken, async (req, res) =>{
-  const explorePostList = await Post.find({privacy : "public"}).sort({createdAt: -1}).limit(20)
+  const explorePostList = await Post.find({privacy : "public"}).sort({created_at: -1}).limit(20)
   if (!explorePostList || explorePostList.length === 0) {
     const ApiResponse =  SuccesAPI("Không có bài viết nào trong mục khám phá", []);
     return res.status(200).json(ApiResponse);

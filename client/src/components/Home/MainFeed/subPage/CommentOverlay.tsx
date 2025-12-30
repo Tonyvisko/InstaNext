@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { FaShare } from "react-icons/fa"
 import axios, { AxiosError } from "axios"
+import ReportMenu from "./ReportMenu"
 
 
 interface CommentsOverlayProps {
@@ -51,9 +52,9 @@ export default function CommentsOverlay({
     parentId: undefined,
     replies: [],
   })
-  
+
   if (!isOpen || !post) return null
-  
+
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState<Comment>(createEmptyComment())
   const [isLikedPost, setIsLikedPost] = useState<boolean>(post?.isLiked ?? false)
@@ -61,7 +62,9 @@ export default function CommentsOverlay({
   const [loadingComments, setLoadingComments] = useState<boolean>(false)
   const [highlightedCommentId, setHighlightedCommentId] = useState<string | null>(null)
   const commentRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
-  const { addReply, handleTokenExpired } = usePostContext()
+  const {  handleTokenExpired } = usePostContext()
+  const [expanded, setExpanded] = useState(false)
+
   const [replyState, setReplyState] = useState<ReplyState>({
     isReply: false,
     replyingTo: null,
@@ -81,7 +84,7 @@ export default function CommentsOverlay({
   useEffect(() => {
     if (commentID && comments.length > 0) {
       setHighlightedCommentId(commentID)
-      
+
       // Sắp xếp comments: đưa comment được highlight lên đầu
       const sortedComments = [...comments]
       const highlightedIndex = sortedComments.findIndex(c => c.id === commentID)
@@ -90,7 +93,7 @@ export default function CommentsOverlay({
         sortedComments.unshift(highlightedComment)
         setComments(sortedComments)
       }
-      
+
       // Scroll đến đầu danh sách
       setTimeout(() => {
         const commentElement = commentRefs.current[commentID]
@@ -98,12 +101,12 @@ export default function CommentsOverlay({
           commentElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }
       }, 100)
-      
+
       // Tắt highlight sau 2 giây
       const timer = setTimeout(() => {
         setHighlightedCommentId(null)
       }, 2000)
-      
+
       return () => clearTimeout(timer)
     }
   }, [commentID, comments.length])
@@ -158,19 +161,31 @@ export default function CommentsOverlay({
     if (newComment?.text.trim() && post) {
       try {
         const token = localStorage.getItem("token") || ""
+        onUpdateComments(post.id, newComment)
         await postCommentAPI(post.id, newComment, token)
         await fetchComments(post.id)
         setNewComment(createEmptyComment())
         setCommentsCount((prev) => prev + 1)
+        
       } catch (err) {
         console.error("Lỗi gửi bình luận:", err)
       }
     }
   }
-  
-  const handleSubmitReplyComment = async (e: React.FormEvent, postId: string, parentCommentId: string, reply: Comment) => {
+
+  const handleSubmitReplyComment = async (e: React.FormEvent, postId: string,  reply: Comment) => {
     e.preventDefault();
-    addReply(postId, parentCommentId, reply)
+    const token = localStorage.getItem("token") || ""
+    await postCommentAPI(postId,  reply, token)
+    setNewComment(createEmptyComment());
+      setReplyState({
+        isReply: false,
+        replyingTo: null,
+        replyText: null,
+        replyTofullname: null,
+        parrentComment: null,
+      });
+    await fetchComments(postId)
     console.log("Da them binh luan ")
   }
 
@@ -197,7 +212,19 @@ export default function CommentsOverlay({
               </Avatar>
               <div className="flex-1">
                 <p className="text-sm">
-                  <span className="font-semibold">{post.fullname}</span> {post.caption}
+                  <p className={` text-sm break-all ${expanded ? "" : "line-clamp-2"}`} >
+                    <span className=" font-semibold pr-1">{post.fullname}</span>
+                    {post.caption}
+                  </p>
+
+                  {(post.caption?.length ?? 0) > 80 && (
+                    <p
+                      onClick={() => setExpanded(!expanded)}
+                      className="text-xs text-blue-500 hover:underline cursor-pointer mt-1"
+                    >
+                      {expanded ? "Thu gọn" : "Xem thêm"}
+                    </p>
+                  )}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">{post.created_at}</p>
               </div>
@@ -215,11 +242,10 @@ export default function CommentsOverlay({
                 ref={(el) => {
                   commentRefs.current[comment.id] = el
                 }}
-                className={`transition-all duration-300 ${
-                  highlightedCommentId === comment.id
+                className={`transition-all duration-300 ${highlightedCommentId === comment.id
                     ? 'animate-pulse bg-yellow-100 p-2 rounded-lg'
                     : ''
-                }`}
+                  }`}
               >
                 <CommentItem
                   postId={post.id}
@@ -235,7 +261,7 @@ export default function CommentsOverlay({
           {replyState.isReply ? (
             <form
               onSubmit={(e) =>
-                handleSubmitReplyComment(e, post.id, replyState.parrentComment!, newComment!)
+                handleSubmitReplyComment(e, post.id, newComment!)
               }
               className="p-4 border-t"
             >
@@ -276,8 +302,8 @@ export default function CommentsOverlay({
                     }
                     className="flex-1 border-0 focus-visible:ring-0 px-0"
                   />
-                  <Button type="submit" variant="ghost" size="sm" disabled={!newComment?.text.trim()}>
-                    <Send size={16} />
+                  <Button type="submit" variant="ghost" size="icon" disabled={!newComment?.text.trim()} className="bg-green-600 text-black ">
+                    <Send color="black" size={16} />
                   </Button>
                   <button
                     type="button"
@@ -287,9 +313,9 @@ export default function CommentsOverlay({
                         isReply: false,
                       })
                     }
-                    className="bg-red-600 text-amber-950"
-                  >
-                    Hủy
+                    className="bg-red-500 text-amber-950 max-h-9 ml-1 text-center"
+                  > 
+                  Hủy
                   </button>
                 </div>
               </div>
@@ -298,9 +324,9 @@ export default function CommentsOverlay({
             <form onSubmit={handleSubmitComment} className="p-4 border-t">
               <div className="flex items-center gap-4 mb-3">
                 <Button
-                type="button"
+                  type="button"
                   size="sm"
-                  className="p-0"
+                  className="p-0 !bg-green-400 hover:!bg-green-500 "
                   onClick={() => {
                     updateLikePost(post.id)
                     setIsLikedPost(!isLikedPost)

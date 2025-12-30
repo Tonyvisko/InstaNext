@@ -1,4 +1,4 @@
-"use client"
+ 
 
 import type React from "react"
 import type { ApiResponse } from "../../../../fomat/APIfomat"

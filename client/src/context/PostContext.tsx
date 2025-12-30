@@ -107,7 +107,13 @@ export function PostProvider({ children }: { children: React.ReactNode }) {
       ...prev,
       [postId]: [...(prev[postId] || []), commentWithReplies],
     }))
-    fetchPosts()
+    setPosts((prevPosts) => 
+        prevPosts.map((post) => 
+            post.id === postId 
+                ? { ...post, commentCount: (post.commentCount || 0) + 1 } 
+                : post
+        )
+    );
   }
 
   const addReply = (postId: string, parentCommentId: string, reply: Comment) => {

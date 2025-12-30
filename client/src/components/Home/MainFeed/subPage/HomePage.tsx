@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { usePostContext } from '../../../../context/PostContext'
 import CommentsOverlay from "./CommentOverlay"
+import ReportMenu from "./ReportMenu"
 
 import type Post from "../../../../fomat/type/Post"
 
@@ -19,11 +20,11 @@ const collectUserData = (eventType: string, data: any) => {
         dwell_time: data.dwell_time ?? 0,
         target_userID: data.target_userID ?? null,
         // data,
-        sessionId: getSessionId()     
+        sessionId: getSessionId()
     }
 
     // Lưu vào memory 
-    if(eventType === "view" && data.dwell_time < 1.5 ){
+    if (eventType === "view" && data.dwell_time < 1.5) {
         return
     }
     saveAnalytics(userData)
@@ -47,41 +48,41 @@ const saveAnalytics = async (data: any) => {
 
     // Có thể gửi lên server khi đạt một số lượng nhất định
     if (analyticsData.length >= 10) {
-    try {
-        const userID = localStorage.getItem("userID")
-        await axios.post(
+        try {
+            const userID = localStorage.getItem("userID")
+            await axios.post(
 
-            `http://localhost:3000/melody/tracking/track/${userID}`,
-            analyticsData,  
-            {
-                headers: {
-                    'Content-Type': 'application/json',
+                `http://localhost:3000/melody/tracking/track/${userID}`,
+                analyticsData,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
                 }
-            }
-        );
-        
-        console.log('✅ Analytics sent:', analyticsData.length, 'events');
-        analyticsData = []; // Reset
-        
-    } catch (error) {
-        console.error('❌ Failed to send analytics:', error);
-        // Giữ lại data để thử gửi lại lần sau
+            );
+
+            console.log('✅ Analytics sent:', analyticsData.length, 'events');
+            analyticsData = []; // Reset
+
+        } catch (error) {
+            console.error('❌ Failed to send analytics:', error);
+            // Giữ lại data để thử gửi lại lần sau
+        }
     }
-}
 }
 
 export default function PostPage() {
     const [selectedPost, setSelectedPost] = useState<Post | null>(null)
     const [isCommentsOpen, setIsCommentsOpen] = useState(false)
     const [viewStartTime, setViewStartTime] = useState<number>(Date.now())
- 
+    const [expanded, setExpanded] = useState(false)
 
     const { posts, addComment, updateLikePost, handleTokenExpired } = usePostContext()
 
     // THÊM: Ref để lưu thời gian bắt đầu xem mỗi post
     const postViewTimes = useRef<Map<string, number>>(new Map())
 
-   
+
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -92,7 +93,7 @@ export default function PostPage() {
                     if (entry.isIntersecting) {
                         // Post BẮT ĐẦU hiển thị
                         if (!postViewTimes.current.has(postId!)) {
-                            postViewTimes.current.set(postId!, Date.now())                            
+                            postViewTimes.current.set(postId!, Date.now())
                         }
                     } else {
                         // Post BIẾN MẤT khỏi viewport
@@ -100,7 +101,7 @@ export default function PostPage() {
                             const startTime = postViewTimes.current.get(postId!)!
                             const viewDuration = Date.now() - startTime
                             const post = posts.find(p => p.id === postId)
-                            
+
                             collectUserData('view', {
                                 postId,
                                 target_userID: post?.userID,
@@ -125,7 +126,7 @@ export default function PostPage() {
             postViewTimes.current.forEach((startTime, postId) => {
                 const viewDuration = Date.now() - startTime
                 const post = posts.find(p => p.id === postId)
-                
+
                 collectUserData('view', {
                     postId,
                     target_userID: post?.userID,
@@ -141,7 +142,7 @@ export default function PostPage() {
         setSelectedPost(post)
         setIsCommentsOpen(true)
         setViewStartTime(Date.now()) // ✅ FIX: Set viewStartTime khi mở
-       
+
         collectUserData('open_comments', {
             postId: post.id,
             target_userID: post.userID,
@@ -150,15 +151,6 @@ export default function PostPage() {
     }
 
     const handleCloseComments = () => {
-        const timeSpent = Date.now() - viewStartTime
-
-        // if (selectedPost) {
-        //     collectUserData('close_comments', {
-        //         postId: selectedPost.id,
-        //         timeSpent: Math.round(timeSpent / 1000)
-        //     })
-        // }
-
         setIsCommentsOpen(false)
         setSelectedPost(null)
     }
@@ -226,31 +218,45 @@ export default function PostPage() {
                                         </p>
                                         <p className="text-xl text-gray-500">{post.created_at}</p>
                                     </div>
-                                    <Button variant="ghost" size="sm">
-                                        <Settings size={16} />
-                                    </Button>
+                                    
+                                    <ReportMenu targetId={post.id} targetType='post' />
                                 </div>
+                                   <p className="text-start ">
+                                        <p className={` text-l p-1 break-words ${expanded ? "" : "line-clamp-2"}`} >
+                                            {post.caption}
+                                        </p>
 
+                                        {(post.caption?.length ?? 0)> 80 && (
+                                            <p
+                                                onClick={() => setExpanded(!expanded)}
+                                                className="text-xs text-blue-500 hover:underline cursor-pointer mt-1"
+                                            >
+                                                {expanded ? "Thu gọn" : "Xem thêm"}
+                                            </p>
+                                        )}
+                                    </p>
+                                {/* trường hợp post co anh  */}
                                 {/* Post Image */}
+                                {post.image && 
                                 <div className="aspect-square bg-gray-100">
                                     <img
-                                        src={post.image || "/placeholder.svg"}
+                                        src={post.image }
                                         alt={`Post by ${post.fullname}`}
                                         className="w-full h-full object-cover"
                                     />
                                 </div>
-
+                                }
                                 {/* Post Actions */}
                                 <div className="p-4">
                                     <div className="flex items-center gap-4 mb-3">
                                         <Button
                                             size="sm"
-                                            className="p-0"
+                                            className="p-0 bg-green-400 hover:bg-green-500"
                                             onClick={() => handleLikeClick(post)}
                                         >
                                             <Heart
                                                 size={24}
-                                                color={post.isLiked === true ? "red" : "black"}
+                                                color={post.isLiked === true ? "red" : "white"}
                                                 fill={post.isLiked === true ? "red" : "white"}
                                             />
                                         </Button>
@@ -283,9 +289,9 @@ export default function PostPage() {
                                         </p>
                                     </div>
 
-                                    <p className="text-start text-sm">
-                                        <span className="font-semibold">{post.fullname}</span> {post.caption}
-                                    </p>
+                                 
+
+                                
                                     <button
                                         className="text-sm text-gray-500 mt-1 hover:text-gray-700"
                                         onClick={() => handleViewAllComments(post)}
@@ -293,6 +299,7 @@ export default function PostPage() {
                                         Xem tất cả {post.commentCount} bình luận
                                     </button>
                                 </div>
+
                             </CardContent>
                         </Card>
                     ))}

@@ -89,7 +89,6 @@ LoginRouter.post('/login', async (req, res) => {
     // Đặt trạng thái user online trong DB
     try {
       await User.findByIdAndUpdate(user._id, { online: true });
-      // gửi thông báo tới bạn bè nếu io có
       try {
         const io = req.app?.get("io");
         if (io) {
@@ -109,7 +108,7 @@ LoginRouter.post('/login', async (req, res) => {
       console.warn("Cập nhật trạng thái online thất bại:", e?.message || e);
     }
 
-    const ApiResponse = SuccesAPI('Đăng nhập thành công', { token, userID: user._id });
+    const ApiResponse = SuccesAPI('Đăng nhập thành công', { token, userID: user._id, role: user.role });
     res.status(200).json(ApiResponse);
   } catch (err) {
     res.status(500).json({ message: 'Lỗi server', error: err.message });

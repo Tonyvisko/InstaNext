@@ -1,4 +1,4 @@
-"use client"
+ 
 
 import { useState } from "react"
 // Update the import path if the file is named differently or located elsewhere

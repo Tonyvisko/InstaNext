@@ -10,6 +10,9 @@ from redis.asyncio import Redis
 
 
 
+import torch
+from torch import nn
+from transformers import AutoTokenizer, AutoModel
 from sklearn.metrics import accuracy_score, f1_score
 
 import numpy as np
@@ -72,7 +75,7 @@ class Config:
     # Training Configuration
     TRAINING_LOOKBACK_DAYS = 60
     MIN_TRAINING_SAMPLES = 1
-    CANDIDATES_LOOKBACK_DAYS=15
+    CANDIDATES_LOOKBACK_DAYS=70
     # Interaction Types
     SOCIAL_INTERACTIONS = ['like', 'comment', 'share','view', 'click', 'skip']
     BEHAVIORAL_INTERACTIONS = ['view', 'click', 'skip']
@@ -290,6 +293,57 @@ class RedisDBManager :
         key = f"user_candidates:{userID}"
         await self.redis.rpush(key,*candidates_str)
         await self.redis.expire(key, 2*60)
+
+class CommentRequest(BaseModel):
+    text: str
+    threshold: float = 0.5
+
+
+# ================= CONFIG =================
+MODEL_NAME = "vinai/phobert-base"
+MAX_LENGTH = 128
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+LABELS = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']
+
+# ================= MODEL =================
+class PhoBERTToxicClassifier(nn.Module):
+    def __init__(self, num_labels, dropout=0.3):
+        super().__init__()
+        self.phobert = AutoModel.from_pretrained(MODEL_NAME)
+        self.dropout = nn.Dropout(dropout)
+        self.classifier = nn.Linear(self.phobert.config.hidden_size, num_labels)
+
+    def forward(self, input_ids, attention_mask):
+        outputs = self.phobert(input_ids=input_ids, attention_mask=attention_mask)
+        pooled_output = outputs.last_hidden_state[:, 0, :]
+        pooled_output = self.dropout(pooled_output)
+        return self.classifier(pooled_output)
+
+# ================= LOAD =================
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "models", "phobert_toxic_best.pt")
+
+print("Load model from:", MODEL_PATH)
+assert os.path.exists(MODEL_PATH), "❌ Không tìm thấy file model"
+model = PhoBERTToxicClassifier(len(LABELS))
+model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
+
+model.to(DEVICE)
+model.eval()
+
+
+
+
+
+
+
+
+
+
+
 
 # ============= INTELLIGENT ENGINE =============
 
@@ -968,10 +1022,10 @@ class RankingAlgorithm:
                 fallback_posts = self.db.find_to_dataframe(
                     "posts",
                     {
-                         "created_at": {"$gte": datetime.now() - timedelta(days=7)},
+                         "created_at": {"$gte": datetime.now() - timedelta(days=90)},
                     },
                     limit=limit
-                ).sort_values("created_at", ascending=True).head(limit)
+                ).sort_values("created_at", ascending=False).head(limit)
                 
                 feed = []
                 for _, p in fallback_posts.iterrows():
@@ -1133,8 +1187,6 @@ class RankingAlgorithm:
             
             logger.error(f"Error generating intelligent feed. Type: {error_type}. Message: {error_message}")
             
-            # Dòng này sẽ re-raise (tạo lại) ngoại lệ, 
-            # cho phép các hàm gọi khác cũng bắt được nó.
             raise
     
     # ========== FEEDBACK PROCESSING ==========
@@ -1467,12 +1519,43 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Cleanup"""
     scheduler.shutdown()
     if db_manager.client:
         db_manager.client.close()
     logger.info("Application shutdown complete")
 
+@app.post("/api/comment-toxic-predict")
+def predict_toxic(req: CommentRequest):
+    encoding = tokenizer(
+        req.text,
+        padding="max_length",
+        truncation=True,
+        max_length=MAX_LENGTH,
+        return_tensors="pt"
+    )
+
+    input_ids = encoding["input_ids"].to(DEVICE)
+    attention_mask = encoding["attention_mask"].to(DEVICE)
+
+    with torch.no_grad():
+        logits = model(input_ids, attention_mask)
+        probs = torch.sigmoid(logits).cpu().numpy()[0]
+
+    results = {
+        label: float(prob)
+        for label, prob in zip(LABELS, probs)
+    }
+
+    toxic_labels = [
+        label for label, prob in results.items()
+        if prob >= req.threshold
+    ]
+
+    return {
+        "text": req.text,
+        "scores": results,
+        "toxic_labels": toxic_labels
+    }
 @app.get("/", response_model=HealthResponse)
 async def root():
     """Health check"""

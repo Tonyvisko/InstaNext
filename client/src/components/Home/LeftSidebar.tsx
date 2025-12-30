@@ -24,7 +24,6 @@ export default function LeftSidebar({ currentPage, onNavigate }: LeftSidebarProp
   ]
   const handleSignOut = async () => {
     try {
-      // gọi logout backend (nếu có token)
       const token = localStorage.getItem("token");
       if (token) {
         try {

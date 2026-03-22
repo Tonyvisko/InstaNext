@@ -5,7 +5,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import type Comment from "../../../../fomat/type/Comment"
 import type { ReplyState } from "./CommentOverlay"
 import { Button } from "@/components/ui/button"
-import ReportMenu from "./ReportMenu"
 
 
 export default function CommentItem({
@@ -19,7 +18,7 @@ export default function CommentItem({
   setReplyState: React.Dispatch<React.SetStateAction<ReplyState>>
 }) {
   const [expanded, setExpanded] = useState(false)
-  const { updateLikeComment } = usePostContext()
+  const { updateLikeComment, handleTokenExpired } = usePostContext()
 
   return (
     <div className="flex items-start text-start gap-3">
@@ -41,7 +40,7 @@ export default function CommentItem({
         {/* Nút "Xem thêm / Thu gọn" */}
         {comment.text.length > 80 && (
           <p
-            onClick={() => setExpanded(!expanded)} 
+            onClick={() => setExpanded(!expanded)}
             className="text-xs text-blue-500 hover:underline cursor-pointer mt-1"
           >
             {expanded ? "Thu gọn" : "Xem thêm"}
@@ -50,8 +49,8 @@ export default function CommentItem({
 
         {/* Info */}
         <div className="flex items-center gap-4 mt-1">
-          <p className="text-xs text-gray-500">{comment.created_at}</p>
-          {/* <p className="text-xs text-gray-500 hover:text-gray-700">{comment.likes} lượt thích</p> */}
+          <p className="text-xs text-gray-500">{comment.time}</p>
+          <p className="text-xs text-gray-500 hover:text-gray-700">{comment.likes} lượt thích</p>
           <p
             className="text-xs cursor-pointer text-gray-500 hover:text-gray-700"
             onClick={() =>
@@ -82,7 +81,7 @@ export default function CommentItem({
                     <span className="font-semibold">{reply.fullname}</span> {reply.text}
                   </p>
                   <div className="flex items-center gap-4 mt-1">
-                    <p className="text-xs text-muted-foreground">{reply.created_at}</p>
+                    <p className="text-xs text-muted-foreground">{reply.time}</p>
                     <p
                       onClick={() =>
                         setReplyState({
@@ -106,9 +105,9 @@ export default function CommentItem({
       </div>
 
       {/* Like button */}
-      {/* <Button
+      <Button
         size="sm"
-        className="p-0 !bg-green-400 hover:!bg-green-500"
+        className="p-0"
         onClick={() => updateLikeComment(postId, comment.id)}
       >
         <Heart
@@ -116,8 +115,7 @@ export default function CommentItem({
           color={comment.isLiked ? "red" : "black"}
           fill={comment.isLiked ? "red" : "white"}
         />
-      </Button> */}
-    <ReportMenu targetId ={comment.id} targetType="comment" />
+      </Button>
     </div>
   )
 }

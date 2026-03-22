@@ -68,11 +68,7 @@ const LoginForm = () => {
         setError("")
         localStorage.setItem("token", data.data.token);
         localStorage.setItem("userID",data.data.userID );
-        if (data.data.role === "USER"){
-          navigate("/homePage/home");
-        }else{
-          navigate("/admin");
-        }
+        navigate("/homePage/home");
       }
     } catch (error) {
       setError("Đăng nhập thất bại!")

@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { usePostContext } from '../../../../context/PostContext'
 import CommentsOverlay from "./CommentOverlay"
-import ReportMenu from "./ReportMenu"
 
 import type Post from "../../../../fomat/type/Post"
 
@@ -16,17 +15,14 @@ const collectUserData = (eventType: string, data: any) => {
     const userData = {
         timestamp: new Date().toISOString(),
         eventType,
-        postId: data.postId,
-        dwell_time: data.dwell_time ?? 0,
-        target_userID: data.target_userID ?? null,
-        // data,
-        sessionId: getSessionId()
+        data,
+        sessionId: getSessionId(),
+        userAgent: navigator.userAgent,
+        screenResolution: `${window.screen.width}x${window.screen.height}`,
+        viewportSize: `${window.innerWidth}x${window.innerHeight}`,
     }
 
     // Lưu vào memory 
-    if (eventType === "view" && data.dwell_time < 1.5) {
-        return
-    }
     saveAnalytics(userData)
 
     // console.log('User Data Collected:', userData)
@@ -48,42 +44,61 @@ const saveAnalytics = async (data: any) => {
 
     // Có thể gửi lên server khi đạt một số lượng nhất định
     if (analyticsData.length >= 10) {
-        try {
-            const userID = localStorage.getItem("userID")
-            await axios.post(
+    try {
+        const userID = localStorage.getItem("userID")
+        await axios.post(
 
-                `http://localhost:3000/melody/tracking/track/${userID}`,
-                analyticsData,
-                {
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
+            `http://localhost:3000/melody/tracking/track/${userID}`,
+            analyticsData,  
+            {
+                headers: {
+                    'Content-Type': 'application/json',
                 }
-            );
-
-            console.log('✅ Analytics sent:', analyticsData.length, 'events');
-            analyticsData = []; // Reset
-
-        } catch (error) {
-            console.error('❌ Failed to send analytics:', error);
-            // Giữ lại data để thử gửi lại lần sau
-        }
+            }
+        );
+        
+        console.log('✅ Analytics sent:', analyticsData.length, 'events');
+        analyticsData = []; // Reset
+        
+    } catch (error) {
+        console.error('❌ Failed to send analytics:', error);
+        // Giữ lại data để thử gửi lại lần sau
     }
+}
 }
 
 export default function PostPage() {
     const [selectedPost, setSelectedPost] = useState<Post | null>(null)
     const [isCommentsOpen, setIsCommentsOpen] = useState(false)
     const [viewStartTime, setViewStartTime] = useState<number>(Date.now())
-    const [expanded, setExpanded] = useState(false)
+ 
 
     const { posts, addComment, updateLikePost, handleTokenExpired } = usePostContext()
 
     // THÊM: Ref để lưu thời gian bắt đầu xem mỗi post
     const postViewTimes = useRef<Map<string, number>>(new Map())
 
+    // Track page view và thời gian ở lại trang
+    useEffect(() => {
+        const startTime = Date.now()
 
+        // collectUserData('page_view', {
+        //     page: 'home',
+        //     postsCount: posts.length
+        // })
 
+        // Track time on page when leaving
+        return () => {
+            const timeSpent = Date.now() - startTime
+
+            collectUserData('page_leave', {
+                page: 'home',
+                timeSpent: Math.round(timeSpent / 1000) // seconds
+            })
+        }
+    }, [posts.length])
+
+    // ✅ THAY ĐỔI: Track post visibility + THỜI GIAN XEM
     useEffect(() => {
         const observer = new IntersectionObserver(
             (entries) => {
@@ -94,18 +109,21 @@ export default function PostPage() {
                         // Post BẮT ĐẦU hiển thị
                         if (!postViewTimes.current.has(postId!)) {
                             postViewTimes.current.set(postId!, Date.now())
+
+                            // collectUserData('post_view_start', {
+                            //     postId,
+                            //     visibilityRatio: entry.intersectionRatio
+                            // })
                         }
                     } else {
                         // Post BIẾN MẤT khỏi viewport
                         if (postViewTimes.current.has(postId!)) {
                             const startTime = postViewTimes.current.get(postId!)!
                             const viewDuration = Date.now() - startTime
-                            const post = posts.find(p => p.id === postId)
 
-                            collectUserData('view', {
+                            collectUserData('post_view_end', {
                                 postId,
-                                target_userID: post?.userID,
-                                dwell_time: Math.floor(viewDuration / 1000), // giây
+                                viewDuration: Math.round(viewDuration / 1000), // giây
                                 visibilityRatio: entry.intersectionRatio
                             })
 
@@ -125,12 +143,9 @@ export default function PostPage() {
         return () => {
             postViewTimes.current.forEach((startTime, postId) => {
                 const viewDuration = Date.now() - startTime
-                const post = posts.find(p => p.id === postId)
-
-                collectUserData('view', {
+                collectUserData('post_view_end', {
                     postId,
-                    target_userID: post?.userID,
-                    viewDuration: Math.floor(viewDuration / 1000),
+                    viewDuration: Math.round(viewDuration / 1000),
                     reason: 'page_leave' // Đánh dấu là do rời trang
                 })
             })
@@ -142,15 +157,24 @@ export default function PostPage() {
         setSelectedPost(post)
         setIsCommentsOpen(true)
         setViewStartTime(Date.now()) // ✅ FIX: Set viewStartTime khi mở
-
+       
         collectUserData('open_comments', {
             postId: post.id,
-            target_userID: post.userID,
+            postAuthor: post.fullname,
             commentCount: post.commentCount
         })
     }
 
     const handleCloseComments = () => {
+        const timeSpent = Date.now() - viewStartTime
+
+        if (selectedPost) {
+            collectUserData('close_comments', {
+                postId: selectedPost.id,
+                timeSpent: Math.round(timeSpent / 1000)
+            })
+        }
+
         setIsCommentsOpen(false)
         setSelectedPost(null)
     }
@@ -160,7 +184,7 @@ export default function PostPage() {
 
         collectUserData('like_post', {
             postId: post.id,
-            target_userID: post.userID,
+            postAuthor: post.fullname,
             action: post.isLiked ? 'unlike' : 'like',
             currentLikes: post.likes
         })
@@ -169,14 +193,13 @@ export default function PostPage() {
     const handleShareClick = (post: Post) => {
         collectUserData('share_click', {
             postId: post.id,
-            target_userID: post.userID
+            postAuthor: post.fullname
         })
     }
 
     const handleViewAllComments = (post: Post) => {
         collectUserData('view_all_comments_click', {
             postId: post.id,
-            target_userID: post.userID,
             commentCount: post.commentCount
         })
         handleOpenComments(post)
@@ -184,7 +207,7 @@ export default function PostPage() {
 
     const handleAvatarClick = (post: Post) => {
         collectUserData('profile_click', {
-            target_userID: post.id,
+            userID: post.id,
             username: post.fullname,
             clickLocation: 'avatar'
         })
@@ -207,7 +230,7 @@ export default function PostPage() {
                                         className="h-15 w-15 cursor-pointer"
                                         onClick={() => handleAvatarClick(post)}
                                     >
-                                        <AvatarImage src={post.avatar || "https://res.cloudinary.com/dsfgzdr5z/image/upload/v1765428569/jmhwx3kbhxxa10jmunzr.png"} />
+                                        <AvatarImage src={post.avatar || "/placeholder.svg"} />
                                     </Avatar>
                                     <div className="flex-1 text-start text-2xl">
                                         <p
@@ -216,47 +239,33 @@ export default function PostPage() {
                                         >
                                             {post.fullname}
                                         </p>
-                                        <p className="text-xl text-gray-500">{post.created_at}</p>
+                                        <p className="text-xl text-gray-500">{post.time}</p>
                                     </div>
-                                    
-                                    <ReportMenu targetId={post.id} targetType='post' />
+                                    <Button variant="ghost" size="sm">
+                                        <Settings size={16} />
+                                    </Button>
                                 </div>
-                                   <p className="text-start ">
-                                        <p className={` text-l p-1 break-words ${expanded ? "" : "line-clamp-2"}`} >
-                                            {post.caption}
-                                        </p>
 
-                                        {(post.caption?.length ?? 0)> 80 && (
-                                            <p
-                                                onClick={() => setExpanded(!expanded)}
-                                                className="text-xs text-blue-500 hover:underline cursor-pointer mt-1"
-                                            >
-                                                {expanded ? "Thu gọn" : "Xem thêm"}
-                                            </p>
-                                        )}
-                                    </p>
-                                {/* trường hợp post co anh  */}
                                 {/* Post Image */}
-                                {post.image && 
                                 <div className="aspect-square bg-gray-100">
                                     <img
-                                        src={post.image }
+                                        src={post.image || "/placeholder.svg"}
                                         alt={`Post by ${post.fullname}`}
                                         className="w-full h-full object-cover"
                                     />
                                 </div>
-                                }
+
                                 {/* Post Actions */}
                                 <div className="p-4">
                                     <div className="flex items-center gap-4 mb-3">
                                         <Button
                                             size="sm"
-                                            className="p-0 bg-green-400 hover:bg-green-500"
+                                            className="p-0"
                                             onClick={() => handleLikeClick(post)}
                                         >
                                             <Heart
                                                 size={24}
-                                                color={post.isLiked === true ? "red" : "white"}
+                                                color={post.isLiked === true ? "red" : "black"}
                                                 fill={post.isLiked === true ? "red" : "white"}
                                             />
                                         </Button>
@@ -289,9 +298,9 @@ export default function PostPage() {
                                         </p>
                                     </div>
 
-                                 
-
-                                
+                                    <p className="text-start text-sm">
+                                        <span className="font-semibold">{post.fullname}</span> {post.caption}
+                                    </p>
                                     <button
                                         className="text-sm text-gray-500 mt-1 hover:text-gray-700"
                                         onClick={() => handleViewAllComments(post)}
@@ -299,7 +308,6 @@ export default function PostPage() {
                                         Xem tất cả {post.commentCount} bình luận
                                     </button>
                                 </div>
-
                             </CardContent>
                         </Card>
                     ))}

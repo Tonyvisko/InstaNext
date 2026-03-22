@@ -6,7 +6,7 @@ export default interface Comment {
   fullname: string
   avatar?: string
   text: string
-  created_at: string
+  time: string
   likes: number
   isLiked: boolean
   parentId?: string // For reply comments

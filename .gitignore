@@ -7,5 +7,3 @@ node_modules/
 
 #bỏ qua file package
 package-lock.json
-
-recommendSystem

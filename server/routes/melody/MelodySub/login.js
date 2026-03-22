@@ -89,6 +89,7 @@ LoginRouter.post('/login', async (req, res) => {
     // Đặt trạng thái user online trong DB
     try {
       await User.findByIdAndUpdate(user._id, { online: true });
+      // gửi thông báo tới bạn bè nếu io có
       try {
         const io = req.app?.get("io");
         if (io) {
@@ -98,7 +99,7 @@ LoginRouter.post('/login', async (req, res) => {
             { id: String(user._id) }
           );
           const friendIds = friendsResult.records.map(r => r.get("id"));
-          friendIds.forEach(fid => io.to(String(fid)).emit("friendOnline", { userID: String(user._id), online: true }));
+          friendIds.forEach(fid => io.to(String(fid)).emit("friendOnline", { userId: String(user._id), online: true }));
           try { await session.close(); } catch {}
         }
       } catch (e) {
@@ -108,7 +109,7 @@ LoginRouter.post('/login', async (req, res) => {
       console.warn("Cập nhật trạng thái online thất bại:", e?.message || e);
     }
 
-    const ApiResponse = SuccesAPI('Đăng nhập thành công', { token, userID: user._id, role: user.role });
+    const ApiResponse = SuccesAPI('Đăng nhập thành công', { token, userID: user._id });
     res.status(200).json(ApiResponse);
   } catch (err) {
     res.status(500).json({ message: 'Lỗi server', error: err.message });
@@ -129,14 +130,14 @@ LoginRouter.post('/logout', async (req, res) => {
     } catch (e) {
       // token không hợp lệ hoặc hết hạn -> vẫn tiếp tục để client xoá token ở phía client
     }
-    const userID = payload?.id ?? payload?._id ?? payload?.userID ?? null;
-    if (userID) {
+    const userId = payload?.id ?? payload?._id ?? payload?.userId ?? null;
+    if (userId) {
       // Hủy bất kỳ timer chuyển offline đang chờ cho user này
       try {
         const io = req.app?.get("io");
-        io?.presence?.clearDisconnectTimer && io.presence.clearDisconnectTimer(String(userID));
+        io?.presence?.clearDisconnectTimer && io.presence.clearDisconnectTimer(String(userId));
       } catch (e) { /* ignore */ }
-      await User.findByIdAndUpdate(userID, { online: false });
+      await User.findByIdAndUpdate(userId, { online: false });
       // Thông báo bạn bè user đã offline
       try {
         const io = req.app?.get("io");
@@ -144,10 +145,10 @@ LoginRouter.post('/logout', async (req, res) => {
           const session = driver.session();
           const friendsResult = await session.run(
             `MATCH (u:User {id: $id})-[:FRIEND_WITH]-(f:User) RETURN f.id AS id`,
-            { id: String(userID) }
+            { id: String(userId) }
           );
           const friendIds = friendsResult.records.map(r => r.get("id"));
-          friendIds.forEach(fid => io.to(String(fid)).emit("friendOffline", { userID: String(userID), online: false }));
+          friendIds.forEach(fid => io.to(String(fid)).emit("friendOffline", { userId: String(userId), online: false }));
           try { await session.close(); } catch {}
         }
       } catch (e) {

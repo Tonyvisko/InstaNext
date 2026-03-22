@@ -13,12 +13,12 @@ async function chatSocket(io, socket) {
 
   // expose helper để các route khác (ví dụ logout) có thể hủy timer đang chờ
   io.presence = {
-    clearDisconnectTimer: (userID) => {
+    clearDisconnectTimer: (userId) => {
       try {
-        const t = userDisconnectTimers.get(String(userID));
+        const t = userDisconnectTimers.get(String(userId));
         if (t) {
           clearTimeout(t);
-          userDisconnectTimers.delete(String(userID));
+          userDisconnectTimers.delete(String(userId));
         }
       } catch (e) {
         console.warn("clearDisconnectTimer lỗi:", e?.message || e);
@@ -37,12 +37,12 @@ async function chatSocket(io, socket) {
   };
 
   // helper: lấy danh sách id bạn bè từ Neo4j
-  const getFriendIds = async (userID) => {
+  const getFriendIds = async (userId) => {
     try {
       const session = driver.session();
       const res = await session.run(
         `MATCH (u:User {id: $id})-[:FRIEND_WITH]-(f:User) RETURN f.id AS id`,
-        { id: String(userID) }
+        { id: String(userId) }
       );
       const ids = res.records.map(r => r.get("id"));
       await session.close();
@@ -54,13 +54,13 @@ async function chatSocket(io, socket) {
   };
 
   // 🟢 GIẢI MÃ TOKEN
-  let userID = null;
+  let userId = null;
   try {
     const token = getTokenFromSocket(socket);
     if (token) {
       try {
         const payload = jwt.verify(token, process.env.JWT_SECRET);
-        userID = payload?.id ?? payload?._id ?? payload?.userID?? payload?.userID ?? null;
+        userId = payload?.id ?? payload?._id ?? payload?.userId?? payload?.userID ?? null;
       } catch (err) {
         if (err && err.name === "TokenExpiredError") {
           socket.emit("tokenExpired", { message: "Token expired" });
@@ -74,7 +74,7 @@ async function chatSocket(io, socket) {
     console.warn("Phân tích auth socket thất bại:", e?.message || e);
   }
 
-  socket.userID = userID ? String(userID) : null;
+  socket.userID = userId ? String(userId) : null;
   console.log("✅ ChatSocket kết nối userID:", socket.userID);
 
   // quản lý bộ đếm kết nối
@@ -88,7 +88,7 @@ async function chatSocket(io, socket) {
       User.findByIdAndUpdate(socket.userID , { online: true }).catch(()=>{});
       getFriendIds(socket.userID ).then(friendIds => {
         friendIds.forEach(fid =>
-          io.to(String(fid)).emit("friendOnline", { userID: socket.userID , online: true })
+          io.to(String(fid)).emit("friendOnline", { userId: socket.userID , online: true })
         );
       });
     }
@@ -164,10 +164,10 @@ async function chatSocket(io, socket) {
             await User.findByIdAndUpdate(socket.userID , { online: false, lastSeen: new Date() });
             const friendIds = await getFriendIds(socket.userID );
             friendIds.forEach(fid =>
-              io.to(String(fid)).emit("friendOffline", { userID: socket.userID , online: false })
+              io.to(String(fid)).emit("friendOffline", { userId: socket.userID , online: false })
             );
             userDisconnectTimers.delete(socket.userID );
-          }, OFFLINE_DELAY_MS); 
+          }, OFFLINE_DELAY_MS);
           userDisconnectTimers.set(socket.userID , t);
         }
       }
